@@ -1,0 +1,126 @@
+import json
+
+class ContaBancaria:
+    def __init__(self, numero, titular, cpf, saldo=0.0, status='ativa'):
+        self.numero = numero
+        self.titular = titular
+        self.cpf = cpf
+        self.saldo = saldo
+        self.status = status
+
+    def alterar_informacoes(self, novo_titular=None, novo_cpf=None):
+        if novo_titular:
+            self.titular = novo_titular
+        if novo_cpf:
+            self.cpf = novo_cpf
+
+    def saque(self, valor):
+        if self.status != 'ativa':
+            return "Conta inativa. Não é possível realizar saque."
+        if valor > self.saldo:
+            return "Saldo insuficiente para saque."
+        self.saldo -= valor
+        return f"Saque de {valor} realizado. Novo saldo: {self.saldo}"
+
+    def deposito(self, valor):
+        if self.status != 'ativa':
+            return "Conta inativa. Não é possível realizar depósito."
+        if valor < 0:
+            return "O valor do depósito não pode ser negativo."
+        self.saldo += valor
+        return f"Depósito de {valor} realizado. Novo saldo: {self.saldo}"
+
+    def transferencia(self, conta_destino, valor):
+        if self.status != 'ativa':
+            return "Conta inativa. Não é possível realizar transferência."
+        if conta_destino.status != 'ativa':
+            return "A conta de destino está inativa."
+        if valor > self.saldo:
+            return "Saldo insuficiente para transferência."
+        self.saldo -= valor
+        conta_destino.saldo += valor
+        return f"Transferência de {valor} realizada para a conta {conta_destino.numero}. Novo saldo: {self.saldo}"
+
+    def consultar_saldo(self):
+        return f"Saldo da conta {self.numero}: {self.saldo}"
+
+    def encerrar_conta(self):
+        self.status = 'inativa'
+        return f"Conta {self.numero} encerrada."
+
+    def __str__(self):
+        return f"Conta {self.numero} - Titular: {self.titular} - CPF: {self.cpf} - Saldo: {self.saldo} - Status: {self.status}"
+
+class Banco:
+    def __init__(self):
+        self.contas = {}
+        self.carregar_dados()
+
+    def cadastrar_conta(self, numero, titular, cpf, saldo_inicial=0.0):
+        if numero in self.contas:
+            return "Número de conta já existe."
+        if saldo_inicial < 0:
+            return "O saldo inicial não pode ser negativo."
+        conta = ContaBancaria(numero, titular, cpf, saldo_inicial)
+        self.contas[numero] = conta
+        self.salvar_dados()
+        return f"Conta {numero} cadastrada com sucesso."
+
+    def alterar_informacoes_conta(self, numero, novo_titular=None, novo_cpf=None):
+        if numero not in self.contas:
+            return "Conta não encontrada."
+        conta = self.contas[numero]
+        conta.alterar_informacoes(novo_titular, novo_cpf)
+        self.salvar_dados()
+        return f"Informações da conta {numero} alteradas com sucesso."
+
+    def consultar_conta(self, numero):
+        if numero not in self.contas:
+            return "Conta não encontrada."
+        return str(self.contas[numero])
+
+    def encerrar_conta(self, numero):
+        if numero not in self.contas:
+            return "Conta não encontrada."
+        conta = self.contas[numero]
+        return conta.encerrar_conta()
+
+    def salvar_dados(self):
+        with open('contas.json', 'w') as f:
+            json.dump({numero: vars(conta) for numero, conta in self.contas.items()}, f, indent=4)
+
+    def carregar_dados(self):
+        try:
+            with open('contas.json', 'r') as f:
+                contas_data = json.load(f)
+                for numero, dados in contas_data.items():
+                    conta = ContaBancaria(**dados)
+                    self.contas[numero] = conta
+        except FileNotFoundError:
+            self.contas = {}
+
+# Exemplo de uso
+banco = Banco()
+
+# Cadastro de contas
+print(banco.cadastrar_conta(1234, 'João Silva', '123.456.789-00', 500.0))
+print(banco.cadastrar_conta(5678, 'Maria Oliveira', '987.654.321-00', 1000.0))
+
+# Consultar saldo
+print(banco.consultar_conta(1234))
+
+# Realizar operações
+conta1 = banco.contas[1234]
+conta2 = banco.contas[5678]
+print(conta1.saque(200))
+print(conta1.deposito(300))
+print(conta1.transferencia(conta2, 150))
+
+# Alteração de informações
+print(banco.alterar_informacoes_conta(1234, novo_titular='João S. Silva'))
+
+# Encerramento de conta
+print(banco.encerrar_conta(5678))
+
+# Consultar conta encerrada
+print(banco.consultar_conta(5678))
